@@ -12,24 +12,38 @@ const signUpSchema = z.object({
 
 export async function POST(req: Request) {
   try {
+    // Add request timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
     const body = await req.json();
     
     // Validate input
     const validatedData = signUpSchema.parse(body);
 
-    // Connect to database
-    await connectDB();
+    // Connect to database with error handling
+    try {
+      await connectDB();
+    } catch (error) {
+      console.error('Database connection error:', error);
+      clearTimeout(timeoutId);
+      return NextResponse.json(
+        { message: 'Database connection failed. Please try again later.' },
+        { status: 503 }
+      );
+    }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: validatedData.email });
+    const existingUser = await User.findOne({ email: validatedData.email }).maxTimeMS(5000);
     if (existingUser) {
+      clearTimeout(timeoutId);
       return NextResponse.json(
         { message: 'User with this email already exists' },
         { status: 400 }
       );
     }
 
-    // Create new user
+    // Create new user with timeout
     const user = await User.create({
       name: validatedData.name,
       email: validatedData.email,
@@ -39,11 +53,14 @@ export async function POST(req: Request) {
     // Remove password from response
     const { password, ...userWithoutPassword } = user.toObject();
 
+    clearTimeout(timeoutId);
     return NextResponse.json(
       { message: 'User created successfully', user: userWithoutPassword },
       { status: 201 }
     );
   } catch (error) {
+    console.error('Signup error:', error);
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: 'Invalid input', errors: error.errors },
@@ -51,9 +68,15 @@ export async function POST(req: Request) {
       );
     }
 
-    console.error('Signup error:', error);
+    if (error.name === 'AbortError') {
+      return NextResponse.json(
+        { message: 'Request timeout. Please try again.' },
+        { status: 408 }
+      );
+    }
+
     return NextResponse.json(
-      { message: 'Internal server error' },
+      { message: 'Internal server error. Please try again later.' },
       { status: 500 }
     );
   }
