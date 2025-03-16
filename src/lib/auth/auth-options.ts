@@ -1,22 +1,7 @@
 import { NextAuthOptions } from 'next-auth';
-import NextAuth from 'next-auth/next';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { User } from '@/models/User';
 import connectDB from '@/lib/db/mongodb';
-import { DefaultSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth-options';
-
-declare module 'next-auth' {
-  interface User {
-    role?: string;
-  }
-  
-  interface Session {
-    user: {
-      role?: string;
-    } & DefaultSession['user'];
-  }
-}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -74,8 +59,4 @@ export const authOptions: NextAuthOptions = {
       return session;
     }
   }
-};
-
-const handler = NextAuth(authOptions);
-
-export { handler as GET, handler as POST }; 
+}; 
