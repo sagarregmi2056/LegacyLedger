@@ -1,12 +1,9 @@
 'use client';
 
-import { Web3Modal } from '@web3modal/react';
-import { WagmiConfig, createConfig, configureChains } from 'wagmi';
+import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react';
+import { WagmiConfig } from 'wagmi';
 import { sepolia } from 'viem/chains';
-import { EthereumClient, w3mProvider } from '@web3modal/ethereum';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { InjectedConnector } from 'wagmi/connectors/injected';
-import { WalletConnectConnector } from 'wagmi/connectors/walletConnect';
 
 // Create QueryClient
 const queryClient = new QueryClient();
@@ -15,39 +12,32 @@ const queryClient = new QueryClient();
 const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID!;
 
 // 2. Create wagmiConfig
-const chains = [sepolia];
+const metadata = {
+    name: 'Legacy Ledger',
+    description: 'Legacy Ledger Web3 App',
+    url: 'https://legacy-ledger.com',
+    icons: ['https://avatars.githubusercontent.com/u/37784886']
+};
 
-const { publicClient } = configureChains(chains, [w3mProvider({ projectId })]);
-
-const wagmiConfig = createConfig({
-    autoConnect: true,
-    connectors: [
-        new InjectedConnector({ chains }),
-        new WalletConnectConnector({
-            chains,
-            options: {
-                projectId,
-            },
-        }),
-    ],
-    publicClient,
+const wagmiConfig = defaultWagmiConfig({
+    chains: [sepolia],
+    projectId,
+    metadata,
 });
 
-const ethereumClient = new EthereumClient(wagmiConfig, chains);
+// 3. Create modal
+createWeb3Modal({
+    wagmiConfig,
+    projectId,
+    themeMode: 'dark'
+});
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
     return (
-        <>
-            <WagmiConfig config={wagmiConfig}>
-                <QueryClientProvider client={queryClient}>
-                    {children}
-                </QueryClientProvider>
-            </WagmiConfig>
-            <Web3Modal
-                projectId={projectId}
-                ethereumClient={ethereumClient}
-                themeMode="dark"
-            />
-        </>
+        <WagmiConfig config={wagmiConfig}>
+            <QueryClientProvider client={queryClient}>
+                {children}
+            </QueryClientProvider>
+        </WagmiConfig>
     );
 } 
