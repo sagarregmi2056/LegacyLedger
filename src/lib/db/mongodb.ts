@@ -19,29 +19,46 @@ const cached = global.mongooseCache ?? (global.mongooseCache = { conn: null, pro
 
 async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) {
+    console.log('Using cached MongoDB connection');
     return cached.conn;
   }
 
   const opts = {
     bufferCommands: false,
-    serverSelectionTimeoutMS: 10000, // Timeout after 10 seconds
-    socketTimeoutMS: 20000, // Timeout after 20 seconds
-    connectTimeoutMS: 20000, // Timeout after 20 seconds
+    serverSelectionTimeoutMS: 5000, // Reduced from 10s to 5s
+    socketTimeoutMS: 10000, // Reduced from 20s to 10s
+    connectTimeoutMS: 10000, // Reduced from 20s to 10s
     retryWrites: true,
     w: 'majority',
-    maxPoolSize: 10,
+    maxPoolSize: 5, // Reduced from 10 to 5 for Vercel serverless
     minPoolSize: 1,
+    family: 4, // Use IPv4, skip trying IPv6
+    autoIndex: true, // Build indexes
+    maxConnecting: 2, // Maximum number of connections being established at once
+    heartbeatFrequencyMS: 5000, // How often to check connection health
+    keepAlive: true, // Keep connections alive
+    keepAliveInitialDelay: 300000, // 5 minutes
   } as const;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI!, opts);
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).catch((error) => {
+      console.error('MongoDB connection error:', error);
+      cached.promise = null;
+      throw error;
+    });
   }
 
   try {
-    const connection = await cached.promise;
-    cached.conn = connection;
+    const connection = await Promise.race([
+      cached.promise,
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('MongoDB connection timeout')), 10000)
+      )
+    ]);
+    
+    cached.conn = connection as typeof mongoose;
     console.log('MongoDB connected successfully');
-    return connection;
+    return cached.conn;
   } catch (error) {
     cached.promise = null;
     cached.conn = null;
