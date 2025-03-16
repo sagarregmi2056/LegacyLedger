@@ -2,7 +2,7 @@
 
 Legacy Ledger is a decentralized application (dApp) that allows users to securely store and manage digital assets with inheritance capabilities. Built with Next.js, TypeScript, and Ethereum smart contracts.
 
-DEPLOYED URL :https://vercel.com/sagarregmi2056s-projects/legacy-ledger-we8p/6eBwkWw4gA49hRUCptiQZMCqf76n
+DEPLOYED URL :https://legacy-ledger-we8p-git-main-sagarregmi2056s-projects.vercel.app/
 
 ## Real-World Problem Solving
 
