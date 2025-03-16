@@ -20,7 +20,7 @@ if (!projectId) {
 const metadata = {
     name: 'Legacy Ledger',
     description: 'Legacy Ledger Web3 App',
-    url: 'https://legacy-ledger.vercel.app',
+    url: 'https://legacy-ledger-we8p.vercel.app',
     icons: ['https://avatars.githubusercontent.com/u/37784886']
 };
 
