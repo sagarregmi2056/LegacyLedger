@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { User } from '@/models/User';
 import connectDB from '@/lib/db/mongodb';
+import mongoose from 'mongoose';
 
 // Input validation schema
 const signUpSchema = z.object({
@@ -11,11 +12,10 @@ const signUpSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  try {
-    // Add request timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+  const controller = new AbortController();
 
+  try {
     const body = await req.json();
     
     // Validate input
@@ -58,9 +58,11 @@ export async function POST(req: Request) {
       { message: 'User created successfully', user: userWithoutPassword },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
+    clearTimeout(timeoutId);
     console.error('Signup error:', error);
 
+    // Handle Zod validation errors
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { message: 'Invalid input', errors: error.errors },
@@ -68,13 +70,23 @@ export async function POST(req: Request) {
       );
     }
 
-    if (error.name === 'AbortError') {
+    // Handle timeout errors
+    if (error instanceof DOMException && error.name === 'AbortError') {
       return NextResponse.json(
         { message: 'Request timeout. Please try again.' },
         { status: 408 }
       );
     }
 
+    // Handle Mongoose errors
+    if (error instanceof mongoose.Error) {
+      return NextResponse.json(
+        { message: 'Database error. Please try again later.' },
+        { status: 503 }
+      );
+    }
+
+    // Handle other errors
     return NextResponse.json(
       { message: 'Internal server error. Please try again later.' },
       { status: 500 }
