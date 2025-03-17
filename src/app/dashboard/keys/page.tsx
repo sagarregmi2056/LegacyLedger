@@ -68,7 +68,7 @@ export default function KeysManagement() {
         // In a real implementation, you'd want to use proper encryption
         // This is a placeholder for demonstration
         return ethers.encryptKeystoreJson(
-            { privateKey },
+            { privateKey, address: userAddress },
             userAddress // Using address as password for demo
         );
     };
