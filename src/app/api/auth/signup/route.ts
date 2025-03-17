@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { User } from '@/models/User';
 import connectDB from '@/lib/db/mongodb';
 import mongoose from 'mongoose';
+import { headers } from 'next/headers';
 
 // Input validation schema
 const signUpSchema = z.object({
@@ -16,6 +17,21 @@ export const maxDuration = 10; // Set max duration to 10 seconds
 
 export async function POST(req: Request) {
   try {
+    // Check for Vercel bot protection headers
+    const headersList = headers();
+    const challengeToken = headersList.get('x-vercel-challenge-token');
+    const vercelMitigated = headersList.get('x-vercel-mitigated');
+
+    if (vercelMitigated === 'challenge' && challengeToken) {
+      console.log('Vercel bot protection triggered, returning challenge response');
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'x-vercel-challenge-token': challengeToken,
+        },
+      });
+    }
+
     // Add request timeout
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Request timeout')), 8000)

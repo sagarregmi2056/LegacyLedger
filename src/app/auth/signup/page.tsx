@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
 export default function SignUp() {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -20,6 +23,30 @@ export default function SignUp() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const makeSignupRequest = async (retryCount = 0): Promise<Response> => {
+        const res = await fetch('/api/auth/signup', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+            }),
+        });
+
+        if (res.status === 403 && retryCount < MAX_RETRIES) {
+            console.log(`Retry attempt ${retryCount + 1} of ${MAX_RETRIES}`);
+            await sleep(RETRY_DELAY);
+            return makeSignupRequest(retryCount + 1);
+        }
+
+        return res;
+    };
+
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
@@ -31,17 +58,7 @@ export default function SignUp() {
         setIsLoading(true);
 
         try {
-            const res = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password,
-                }),
-            });
+            const res = await makeSignupRequest();
 
             if (!res.ok) {
                 const error = await res.json();
@@ -51,6 +68,7 @@ export default function SignUp() {
             toast.success('Account created successfully!');
             router.push('/auth/signin');
         } catch (error: any) {
+            console.error('Signup error:', error);
             toast.error(error.message || 'Something went wrong');
         } finally {
             setIsLoading(false);
